@@ -1,0 +1,95 @@
+name: Alertas de cobro de bonos
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # 9:00 AM Argentina (UTC-3)
+  workflow_dispatch:        # También se puede correr manualmente desde GitHub
+
+jobs:
+  check-payments:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar dependencias y verificar cobros
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+          ONESIGNAL_API_KEY: ${{ secrets.ONESIGNAL_API_KEY }}
+        run: |
+          pip install firebase-admin requests -q
+          python3 << 'PYEOF'
+          import json, os, datetime, requests
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          # Conectar a Firebase con las credenciales del Secret
+          cred_dict = {
+            "type": "service_account",
+            "project_id": os.environ['FIREBASE_PROJECT_ID'],
+            "client_email": os.environ['FIREBASE_CLIENT_EMAIL'],
+            "private_key": os.environ['FIREBASE_PRIVATE_KEY'].replace('\\n', '\n'),
+            "token_uri": "https://oauth2.googleapis.com/token",
+          }
+          cred = credentials.Certificate(cred_dict)
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          # Leer todos los bonos de Firestore
+          bonos = []
+          docs = db.collection('bonos').get()
+          for doc in docs:
+              bonos.append(doc.to_dict())
+
+          print(f"Total de bonos en Firestore: {len(bonos)}")
+
+          today = datetime.date.today()
+          ONESIGNAL_APP_ID = os.environ['ONESIGNAL_APP_ID']
+          ONESIGNAL_API_KEY = os.environ['ONESIGNAL_API_KEY']
+
+          # Días en los que querés recibir alerta
+          DIAS_ALERTA = [0, 1, 3, 7, 15]
+
+          alertas_enviadas = 0
+          for bono in bonos:
+              try:
+                  fecha = datetime.date.fromisoformat(bono['fecha'])
+              except:
+                  continue
+              dias = (fecha - today).days
+              if dias not in DIAS_ALERTA:
+                  continue
+
+              renta = float(bono.get('renta', 0))
+              amort = float(bono.get('amort', 0))
+              total = renta + amort
+              moneda = bono.get('moneda', '')
+              activo = bono.get('activo', 'Bono')
+
+              if dias == 0:
+                  titulo = f"💰 HOY cobrás: {activo}"
+                  cuerpo = f"Total: {total:.2f} {moneda} (R: {renta:.2f} + A: {amort:.2f})"
+              elif dias == 1:
+                  titulo = f"⏰ MAÑANA: {activo}"
+                  cuerpo = f"Total: {total:.2f} {moneda} — {bono['fecha']}"
+              else:
+                  titulo = f"📅 En {dias} días: {activo}"
+                  cuerpo = f"Total: {total:.2f} {moneda} — {bono['fecha']}"
+
+              payload = {
+                  "app_id": ONESIGNAL_APP_ID,
+                  "included_segments": ["All"],
+                  "headings": {"es": titulo, "en": titulo},
+                  "contents": {"es": cuerpo, "en": cuerpo},
+                  "url": "https://julian-obregon.github.io/Cobro-de-Renta/",
+              }
+              resp = requests.post(
+                  "https://onesignal.com/api/v1/notifications",
+                  json=payload,
+                  headers={"Authorization": f"Basic {ONESIGNAL_API_KEY}"}
+              )
+              print(f"Notificación enviada: {activo} ({dias}d) → {resp.status_code}")
+              alertas_enviadas += 1
+
+          print(f"Total alertas enviadas: {alertas_enviadas}")
+          PYEOF
