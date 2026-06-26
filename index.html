@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Bonos</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#16C784">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mis Bonos">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred=window.OneSignalDeferred||[];
+  OneSignalDeferred.push(async function(OneSignal){
+    await OneSignal.init({
+      appId:"f9f96c29-e81f-4333-8520-81ef5592ded5",
+      notifyButton:{enable:true},
+      serviceWorkerParam:{scope:"/Cobro-de-Renta/"},
+      serviceWorkerPath:"sw.js",
+    });
+  });
+</script>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDM8ljpyP8CFpE82ahZmcdSsjjilKTT2k",
+    authDomain: "renta-de-bonos.firebaseapp.com",
+    projectId: "renta-de-bonos",
+    storageBucket: "renta-de-bonos.firebasestorage.app",
+    messagingSenderId: "870288925496",
+    appId: "1:870288925496:web:7979e7a6c60334aad197cd",
+    measurementId: "G-J45PQ8EKHP"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._collection = collection;
+  window._getDocs = getDocs;
+  window._addDoc = addDoc;
+  window._deleteDoc = deleteDoc;
+  window._doc = doc;
+  window._setDoc = setDoc;
+
+  // Cargar bonos al arrancar
+  window.addEventListener('DOMContentLoaded', () => {
+    cargarBonos();
+  });
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0D1117;--bg-elev:#161B22;--surface:#1C2128;--surface2:#22272E;--border:#30363D;--border-soft:#21262D;
+  --green:#16C784;--green-soft:rgba(22,199,132,0.12);--green-dim:#0E8A5A;
+  --amber:#F0B429;--amber-soft:rgba(240,180,41,0.12);
+  --red:#FF5C6E;--red-soft:rgba(255,92,110,0.12);
+  --blue:#58A6FF;--blue-soft:rgba(88,166,255,0.12);
+  --text:#E6EDF3;--text-dim:#8B949E;--muted:#6E7681;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;}
+::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.wrap{max-width:800px;margin:0 auto;padding:28px 16px 80px;}
+
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-mark{width:36px;height:36px;border-radius:9px;background:var(--green);display:flex;align-items:center;justify-content:center;}
+.brand h1{font-family:var(--font-display);font-size:18px;font-weight:700;}
+.brand p{font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:1px;}
+.fecha-hoy{font-family:var(--font-mono);font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:20px;}
+
+/* HERO */
+.proximo-hero{background:var(--surface);border:1px solid var(--green-dim);border-radius:16px;padding:20px 22px;margin-bottom:20px;position:relative;overflow:hidden;}
+.proximo-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),var(--green-dim));}
+.proximo-eyebrow{font-family:var(--font-mono);font-size:10px;color:var(--green);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+.proximo-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+.proximo-activo{font-family:var(--font-display);font-size:17px;font-weight:700;}
+.proximo-fecha{font-size:11.5px;color:var(--muted);font-family:var(--font-mono);}
+.countdown-num{font-family:var(--font-display);font-size:38px;font-weight:700;color:var(--green);line-height:1;text-align:right;}
+.countdown-lbl{font-size:11px;color:var(--muted);text-align:right;}
+.proximo-montos{display:flex;gap:12px;flex-wrap:wrap;}
+.monto-item{background:var(--bg-elev);border-radius:9px;padding:10px 14px;}
+.monto-lbl{font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:3px;}
+.monto-val{font-family:var(--font-mono);font-size:15px;font-weight:600;color:var(--green);}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+@media(max-width:600px){.kpi-row{grid-template-columns:1fr 1fr;}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
+.kpi-label{font-size:10px;color:var(--muted);font-family:var(--font-mono);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:5px;}
+.kpi-val{font-family:var(--font-mono);font-size:18px;font-weight:600;}
+.green{color:var(--green);}.amber{color:var(--amber);}.blue{color:var(--blue);}.red{color:var(--red);}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* FORM AGREGAR BONO */
+.add-form{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px;margin-bottom:20px;}
+.add-form h2{font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:14px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:520px){.form-grid{grid-template-columns:1fr;}}
+.field label{display:block;font-size:10.5px;color:var(--muted);font-family:var(--font-mono);margin-bottom:4px;}
+.field input,.field select{width:100%;background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-family:var(--font-body);font-size:13px;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--green);}
+.form-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.btn{font-family:var(--font-body);font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;border:1px solid transparent;cursor:pointer;}
+.btn-green{background:var(--green);color:#0D1117;}
+.btn-green:hover{background:#20E89A;}
+.btn-ghost{background:transparent;color:var(--text-dim);border-color:var(--border);}
+.btn-ghost:hover{background:var(--surface2);}
+.btn-sm{padding:6px 11px;font-size:11.5px;}
+.btn-red{background:transparent;color:var(--red);border-color:var(--red);}
+.btn-red:hover{background:var(--red-soft);}
+
+/* LISTA */
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.section-title{font-family:var(--font-display);font-size:15px;font-weight:700;}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;}
+.filter-btn{font-family:var(--font-mono);font-size:10.5px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;}
+.filter-btn.active{background:var(--surface2);color:var(--text);border-color:var(--green);}
+
+.pago-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;}
+.pago-item.urgente{border-color:var(--amber);}
+.pago-item.hoy{border-color:var(--green);background:var(--green-soft);}
+.pago-dias{width:48px;flex-shrink:0;text-align:center;}
+.dias-num{font-family:var(--font-display);font-size:20px;font-weight:700;line-height:1;}
+.dias-lbl{font-size:9px;color:var(--muted);font-family:var(--font-mono);}
+.pago-divider{width:1px;height:36px;background:var(--border);flex-shrink:0;}
+.pago-info{flex:1;min-width:0;}
+.pago-activo{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pago-fecha-text{font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px;}
+.moneda-tag{font-family:var(--font-mono);font-size:9.5px;padding:2px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;}
+.moneda-CCL{background:var(--blue-soft);color:var(--blue);}
+.moneda-USD{background:var(--green-soft);color:var(--green);}
+.moneda-ARS{background:var(--amber-soft);color:var(--amber);}
+.tag-amort{background:var(--amber-soft);color:var(--amber);font-size:9px;padding:1px 6px;border-radius:6px;font-family:var(--font-mono);margin-top:3px;display:inline-block;}
+.pago-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.pago-total{font-family:var(--font-mono);font-size:14px;font-weight:600;text-align:right;}
+.pago-detalle{font-size:10px;color:var(--muted);font-family:var(--font-mono);text-align:right;margin-top:2px;}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:4px 6px;}
+.del-btn:hover{color:var(--red);}
+
+/* LOADING */
+.loading{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.empty{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+.hidden{display:none!important;}
+.error-box{background:var(--red-soft);border:1px solid var(--red);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--red);margin-bottom:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D1117" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5.5c0-1.9-2.2-3.5-5-3.5s-5 1.6-5 3.5 2.2 3.5 5 3.5 5 1.6 5 3.5-2.2 3.5-5 3.5-5-1.6-5-3.5"/></svg>
+    </div>
+    <div>
+      <h1>Mis Bonos</h1>
+      <p id="header-sub">cargando...</p>
+    </div>
+  </div>
+  <div class="fecha-hoy" id="fecha-hoy">—</div>
+</header>
+
+<div id="error-container"></div>
+
+<!-- PRÓXIMO COBRO HERO -->
+<div class="proximo-hero hidden" id="hero">
+  <div class="proximo-eyebrow">Próximo cobro</div>
+  <div class="proximo-top">
+    <div><div class="proximo-activo" id="prox-activo">—</div><div class="proximo-fecha" id="prox-fecha">—</div></div>
+    <div><div class="countdown-num" id="prox-dias">—</div><div class="countdown-lbl">días restantes</div></div>
+  </div>
+  <div class="proximo-montos" id="prox-montos"></div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-row hidden" id="kpi-section">
+  <div class="kpi"><div class="kpi-label">Cobros próx. 365d</div><div class="kpi-val green" id="kpi-30">0</div><div class="kpi-sub">pagos totales</div></div>
+  <div class="kpi"><div class="kpi-label">CCL próx. 365d</div><div class="kpi-val amber" id="kpi-ccl">—</div><div class="kpi-sub">renta + amort</div></div>
+  <div class="kpi"><div class="kpi-label">USD próx. 365d</div><div class="kpi-val blue" id="kpi-usd">—</div><div class="kpi-sub">renta + amort</div></div>
+  <div class="kpi"><div class="kpi-label">ARS próx. 365d</div><div class="kpi-val green" id="kpi-ars">—</div><div class="kpi-sub">renta + amort</div></div>
+</div>
+
+<!-- AGREGAR BONO -->
+<div class="add-form">
+  <h2>+ Agregar cobro</h2>
+  <div id="form-error" class="error-box hidden"></div>
+  <div class="form-grid">
+    <div class="field" style="grid-column:1/-1">
+      <label>Nombre del bono / activo</label>
+      <input type="text" id="f-activo" placeholder="Ej: YM34O — YPF 8.25%">
+    </div>
+    <div class="field">
+      <label>Fecha de pago</label>
+      <input type="date" id="f-fecha">
+    </div>
+    <div class="field">
+      <label>Moneda</label>
+      <select id="f-moneda">
+        <option value="CCL">CCL (dólar cable)</option>
+        <option value="USD">USD (MEP)</option>
+        <option value="ARS">ARS (pesos)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Renta (interés)</label>
+      <input type="number" id="f-renta" placeholder="0.00" min="0" step="0.01">
+    </div>
+    <div class="field">
+      <label>Amortización (capital)</label>
+      <input type="number" id="f-amort" placeholder="0.00" min="0" step="0.01">
+    </div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-green" onclick="agregarBono()">Guardar en la nube</button>
+    <button class="btn btn-ghost" onclick="limpiarForm()">Limpiar</button>
+  </div>
+</div>
+
+<!-- LISTA -->
+<div class="section-header">
+  <div class="section-title">Calendario de cobros</div>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFiltro('todos',this)">Todos</button>
+    <button class="filter-btn" onclick="setFiltro('CCL',this)">CCL</button>
+    <button class="filter-btn" onclick="setFiltro('USD',this)">USD</button>
+    <button class="filter-btn" onclick="setFiltro('ARS',this)">ARS</button>
+  </div>
+</div>
+<div id="pagos-lista"><div class="loading"><span class="spinner"></span>Cargando bonos...</div></div>
+
+</div>
+
+<script>
+let BONOS = [];
+let filtroActivo = 'todos';
+
+function hoy(){return new Date(new Date().toDateString());}
+function diasHasta(f){return Math.round((new Date(f+'T00:00:00')-hoy())/86400000);}
+function fmt(n){return Number(n).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function colorDias(d){if(d===0)return'green';if(d<=7)return'amber';if(d<=30)return'blue';return'';}
+function setFiltro(f,btn){filtroActivo=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderLista();}
+
+function mostrarError(msg){
+  const el=document.getElementById('error-container');
+  el.innerHTML=`<div class="error-box">${msg}</div>`;
+  setTimeout(()=>el.innerHTML='',5000);
+}
+
+async function cargarBonos(){
+  try{
+    const db=window._db;
+    if(!db){setTimeout(cargarBonos,500);return;}
+    const snap=await window._getDocs(window._collection(db,'bonos'));
+    BONOS=[];
+    snap.forEach(d=>BONOS.push({id:d.id,...d.data()}));
+    BONOS.sort((a,b)=>diasHasta(a.fecha)-diasHasta(b.fecha));
+    document.getElementById('header-sub').textContent=`${BONOS.length} bonos cargados`;
+    renderTodo();
+  }catch(e){
+    console.error(e);
+    mostrarError('Error conectando con Firebase. Verificá que configuraste las credenciales.');
+    document.getElementById('pagos-lista').innerHTML='<div class="empty">No se pudo cargar. Verificá la configuración de Firebase.</div>';
+  }
+}
+
+async function agregarBono(){
+  const activo=document.getElementById('f-activo').value.trim();
+  const fecha=document.getElementById('f-fecha').value;
+  const moneda=document.getElementById('f-moneda').value;
+  const renta=parseFloat(document.getElementById('f-renta').value)||0;
+  const amort=parseFloat(document.getElementById('f-amort').value)||0;
+
+  const ferr=document.getElementById('form-error');
+  if(!activo||!fecha){ferr.textContent='Completá el nombre y la fecha.';ferr.classList.remove('hidden');return;}
+  ferr.classList.add('hidden');
+
+  try{
+    const db=window._db;
+    const ref=await window._addDoc(window._collection(db,'bonos'),{activo,fecha,moneda,renta,amort});
+    BONOS.push({id:ref.id,activo,fecha,moneda,renta,amort});
+    BONOS.sort((a,b)=>diasHasta(a.fecha)-diasHasta(b.fecha));
+    limpiarForm();
+    document.getElementById('header-sub').textContent=`${BONOS.length} bonos cargados`;
+    renderTodo();
+  }catch(e){
+    mostrarError('Error guardando. Verificá tu conexión y la configuración de Firebase.');
+  }
+}
+
+async function eliminarBono(id){
+  if(!confirm('¿Eliminar este cobro?'))return;
+  try{
+    await window._deleteDoc(window._doc(window._db,'bonos',id));
+    BONOS=BONOS.filter(b=>b.id!==id);
+    document.getElementById('header-sub').textContent=`${BONOS.length} bonos cargados`;
+    renderTodo();
+  }catch(e){mostrarError('Error eliminando.');}
+}
+
+function limpiarForm(){
+  ['f-activo','f-fecha','f-renta','f-amort'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-moneda').value='CCL';
+  document.getElementById('form-error').classList.add('hidden');
+}
+
+function renderTodo(){
+  const futuros=BONOS.filter(b=>diasHasta(b.fecha)>=0);
+
+  // Hero
+  const hero=document.getElementById('hero');
+  const kpiSection=document.getElementById('kpi-section');
+  if(futuros.length>0){
+    hero.classList.remove('hidden');
+    kpiSection.classList.remove('hidden');
+    const prox=futuros[0];
+    const d=diasHasta(prox.fecha);
+    document.getElementById('prox-activo').textContent=prox.activo;
+    document.getElementById('prox-fecha').textContent=new Date(prox.fecha+'T00:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+    const diasEl=document.getElementById('prox-dias');
+    diasEl.textContent=d===0?'HOY':d;
+    diasEl.style.color=d===0?'var(--green)':d<=7?'var(--amber)':'var(--green)';
+    const total=Number(prox.renta)+Number(prox.amort);
+    document.getElementById('prox-montos').innerHTML=`
+      <div class="monto-item"><div class="monto-lbl">RENTA</div><div class="monto-val">${fmt(prox.renta)} ${prox.moneda}</div></div>
+      ${Number(prox.amort)>0?`<div class="monto-item"><div class="monto-lbl">AMORTIZACIÓN</div><div class="monto-val">${fmt(prox.amort)} ${prox.moneda}</div></div>`:''}
+      <div class="monto-item"><div class="monto-lbl">TOTAL</div><div class="monto-val">${fmt(total)} ${prox.moneda}</div></div>
+    `;
+    const en365=futuros.filter(b=>diasHasta(b.fecha)<=365);
+    document.getElementById('kpi-30').textContent=en365.length;
+    document.getElementById('kpi-ccl').textContent=fmt(en365.filter(b=>b.moneda==='CCL').reduce((a,b)=>a+Number(b.renta)+Number(b.amort),0));
+    document.getElementById('kpi-usd').textContent=fmt(en365.filter(b=>b.moneda==='USD').reduce((a,b)=>a+Number(b.renta)+Number(b.amort),0));
+    document.getElementById('kpi-ars').textContent=fmt(en365.filter(b=>b.moneda==='ARS').reduce((a,b)=>a+Number(b.renta)+Number(b.amort),0));
+  }else{
+    hero.classList.add('hidden');
+  }
+  renderLista();
+}
+
+function renderLista(){
+  const futuros=BONOS.filter(b=>diasHasta(b.fecha)>=0);
+  const filtrados=filtroActivo==='todos'?futuros:futuros.filter(b=>b.moneda===filtroActivo);
+  const el=document.getElementById('pagos-lista');
+  if(!filtrados.length){
+    el.innerHTML=`<div class="empty">No hay cobros próximos${filtroActivo!=='todos'?' en '+filtroActivo:''}.<br>Agregá un bono arriba.</div>`;
+    return;
+  }
+  el.innerHTML=filtrados.map(b=>{
+    const d=diasHasta(b.fecha);
+    const total=Number(b.renta)+Number(b.amort);
+    let cls='pago-item';
+    if(d===0)cls+=' hoy';else if(d<=7)cls+=' urgente';
+    const color=colorDias(d);
+    const fechaFmt=new Date(b.fecha+'T00:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'});
+    return `<div class="${cls}">
+      <div class="pago-dias"><div class="dias-num ${color}">${d===0?'HOY':d}</div><div class="dias-lbl">${d===0?'':'días'}</div></div>
+      <div class="pago-divider"></div>
+      <div class="pago-info">
+        <div class="pago-activo">${b.activo}<span class="moneda-tag moneda-${b.moneda}">${b.moneda}</span></div>
+        <div class="pago-fecha-text">${fechaFmt}</div>
+        ${Number(b.amort)>0?`<span class="tag-amort">+ amort ${fmt(b.amort)}</span>`:''}
+      </div>
+      <div class="pago-right">
+        <div>
+          <div class="pago-total">${fmt(total)}</div>
+          <div class="pago-detalle">R: ${fmt(b.renta)} + A: ${fmt(b.amort)}</div>
+        </div>
+        <button class="del-btn" onclick="eliminarBono('${b.id}')" title="Eliminar">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('fecha-hoy').textContent=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'});
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e)));
+}
+</script>
+</body>
+</html>
